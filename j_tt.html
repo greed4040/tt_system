@@ -1,1 +1,259 @@
-/usr/share/nginx/html/j_tt.html
+<html>
+    <head>
+    <meta charset="UTF-8">
+    <style>
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 4px;
+        }
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+        button.ec_hidden {
+            background-color: rgb(204, 202, 219);
+            visibility: hidden;
+        }
+        button.ec_visible {
+            background-color: rgb(205, 221, 209);
+            visibility: visible;
+        }
+    </style>
+
+    <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>		
+    <script type='text/javascript'>
+        var server_url="https://vmi355260.contaboserver.net:9019/";
+        var edit_toggler=0;
+        function makeid(length) {
+            var result           = '';
+            var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            var charactersLength = characters.length;
+            for ( var i = 0; i < length; i++ ) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+        function add_data(){
+            Url=server_url+"user_request";
+            var dic={};
+            dic["prob"]=document.getElementById('input_problem').value;
+            dic["desc"]=document.getElementById('input_desc').value;
+            dic["pcid"]=document.getElementById('input_pcid').value;
+            dic["state"]=document.getElementById('input_state').value;
+
+            var floor = document.getElementsByName('input_floor');
+            var floor_value=-1;
+            for(var i = 0; i < floor.length; i++){
+                if(floor[i].checked){ floor_value = floor[i].value; }
+            }
+            dic["floor"]=floor_value;
+            
+            if (floor_value!="-1"){
+                console.log(dic);
+                //var strgn = JSON.stringify(dic);
+                //var B64 = btoa(strgn);
+                console.log(Url);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", Url, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                var strgn = JSON.stringify(dic);
+                //var encoded = encodeURI(strgn);
+                //var B64 = btoa(strgn);
+                //console.log(B64);
+                var ds={};
+                //ds["data"]=B64;
+                ds["data"]=strgn;
+                xhr.send(JSON.stringify(ds));
+                
+                xhr.onload = function() {
+                        console.log("done");
+                        var data = JSON.parse(this.responseText);
+                        console.log(data);
+                        get_data();
+                    }
+            } else { document.getElementById('problems_content').innerHTML="set floor please";}
+
+        }
+        function get_data(){
+            console.log("get_data");
+            Url=server_url+"show_problems";
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", Url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send();
+            xhr.onload = function() {
+                console.log("done");
+                var data = JSON.parse(this.responseText);
+                console.log(data);
+                show_data(data);
+            };
+        };
+        function show_data(data){
+            cont_div=document.getElementById('problems_content');
+            var html="<br><button onclick='edit()'>edit</button><table id='table_content'>";
+            for (var key in data) {
+                    probl=data[key];
+                    if(html.endsWith("<table id='table_content'>")){
+                        html+="<th>date</th>";    
+                        for (var details in probl){
+                            html+="<th>"+details+"</th>";
+                        }
+                        html+="<th>close</th>";
+                        //html+="<th>edit</th>";
+                    }
+                    html+="<tr>";
+                    var active="";
+                    
+                    var problem_id=key;
+                    date=key.replace("problem_","");
+                    var formattedDate = new Date(date*1).toLocaleDateString("ru-RU")
+                    
+                    var formattedTime = new Date(date*1).toLocaleTimeString("ru-RU")
+                    html+="<td>"+formattedDate+" "+formattedTime+"</td>";
+                    
+                    for (var details in probl){
+                        //console.log(details, probl[details]);
+                        html+="<td>"+probl[details]+"</td>";
+                        
+                        if (details=="state"){
+                            div="<button onclick='remove_by_key(`"+key+"`)' class='ec_hidden' id='"+makeid(10)+"'>remove</button>";
+                            if (probl[details]=="active"){
+                                btn="<button onclick='close_problem(`"+problem_id+"`)'>close</button>";
+                                html+="<td>"+btn+div+"</td>";
+                            } else {
+                                html+="<td>"+div+"</td>";
+                            }
+                        } 
+                    } 
+                    //html+="<td><div id='"+key+"'></td>";
+                    html+="</tr>";
+            }
+            html+="</table>";
+            cont_div.innerHTML=html;
+            edit_toggler=0;
+        };
+        function close_problem(inp){
+            console.log(dic);
+            console.log(Url);
+
+            Url=server_url+"close";
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", Url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            var dic={};
+            dic["problem_id"]=inp;
+            var strgn = JSON.stringify(dic);
+            
+            var B64 = btoa(strgn);
+            console.log(B64);
+            var ds={};
+            ds["data"]=B64;
+            xhr.send(JSON.stringify(ds));
+                
+            xhr.onload = function() {
+                    console.log("done");
+                    var data = JSON.parse(this.responseText);
+                    console.log(data);
+                    get_data();
+                }
+        }
+        function edit(){
+            console.log("begin", edit_toggler);
+            var etbl=[];
+            if (edit_toggler==0){
+                etbl=document.getElementsByClassName("ec_hidden");
+            } else {
+                etbl=document.getElementsByClassName("ec_visible");
+            };
+            
+            vis="ec_visible";
+            hid="ec_hidden";
+            console.log("etbl length:", etbl.length);
+            var idarr=[];
+            for(f=0;f<etbl.length;f++){
+                var current_id=etbl[f].id;
+                idarr.push(current_id);
+            }
+            console.log("elements count:", idarr.length);
+
+            for(i=0;i<idarr.length;i++){
+                var the_id=idarr[i];
+                the_ch_element=document.getElementById(the_id);
+                if (edit_toggler==0) {
+                    the_ch_element.classList.add(vis);
+                    the_ch_element.classList.remove(hid);
+                } else {
+                    the_ch_element.classList.add(hid);
+                    the_ch_element.classList.remove(vis);
+                }
+            }
+            if (edit_toggler==0){ edit_toggler=1; } else { edit_toggler=0; }
+            console.log("end", edit_toggler);
+        }
+        function remove_by_key(recid){
+            Url=server_url+"remove_element";
+            var xhr = new XMLHttpRequest();
+
+            xhr.open("POST", Url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            var ds={};
+            ds["data"]=recid;
+            xhr.send(JSON.stringify(ds));
+                
+            xhr.onload = function() {
+                console.log("done removing");
+                var data = JSON.parse(this.responseText);
+                console.log(data);
+                get_data();
+            }
+        }
+    </script>
+    </head>
+    <body>
+        <div>этаж</div>
+        <input type="radio" id="male" name="input_floor" value="0">
+        <label for="male">0</label>
+        <input type="radio" id="female" name="input_floor" value="1">
+        <label for="female">1</label>
+        <input type="radio" id="other" name="input_floor" value="2">
+        <label for="other">2</label><br>
+
+        <div>номер компьютера</div>
+        <input value='123' id='input_pcid' size=20>
+
+        <div>тип проблемы</div>
+        <select id="input_problem">
+            <option value="headphones">headphones</option>
+            <option value="microphone">microphone</option>
+            <option value="mouse">mouse</option>
+            <option value="keyboard">keyboard</option>
+            <option value="internet">internet</option>
+            <option value="game account">game account</option>
+            <option value="game">game</option>
+            <option value="computer">computer</option>
+        </select>
+        
+        <div>описание проблемы</div>
+        <textarea id='input_desc' cols="20" rows="3">headphones problem</textarea>
+        <div>статус</div>
+        <select id="input_state">
+            <option value="active">active</option>
+            <option value="closed">closed</option>
+        </select>
+        <br>
+        <br>
+        <br>
+        <button onclick='add_data()'>add problem</button>
+        <button onclick='get_data()'>show problems</button>
+        <br>
+        <div id="problems_content"></div>
+    </body>
+</html>
